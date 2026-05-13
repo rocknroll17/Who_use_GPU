@@ -220,9 +220,6 @@ def build_embed() -> dict:
     multi_gpu = len(gpus) > 1
 
     for uuid, gpu in sorted(gpus.items(), key=lambda x: x[1]["index"]):
-        if multi_gpu and fields:
-            fields.append({"name": "\u200b", "value": "\u200b", "inline": False})
-
         util      = gpu["util"]
         mem_used  = gpu["mem_used"]
         mem_total = gpu["mem_total"]
@@ -243,6 +240,8 @@ def build_embed() -> dict:
         parts.append("**Processes**")
         parts.append(proc_text)
         value = "\n".join(parts)
+        if multi_gpu:
+            value += "\n\u200b"  # GPU 간 한 줄 여백
         fields.append({
             "name":   f"GPU {gpu['index']} — {gpu['name']}" if multi_gpu else gpu["name"],
             "value":  value,

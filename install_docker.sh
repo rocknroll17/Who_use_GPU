@@ -81,6 +81,12 @@ echo ""
 # ── 2. 설정 파일 초기화 ──────────────────────────────────────────────────
 echo "[2/5] 설정 파일 확인 중..."
 CONFIG_FILE="$SCRIPT_DIR/gpu_monitor.conf"
+
+# docker compose를 직접 실행한 경우 conf 자리에 디렉토리가 생성되는 문제 처리
+if [[ -d "$CONFIG_FILE" ]]; then
+    rm -rf "$CONFIG_FILE"
+fi
+
 if [[ ! -f "$CONFIG_FILE" ]]; then
     echo ""
     echo "  Discord 웹훅 URL을 입력하세요."
