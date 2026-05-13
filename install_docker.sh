@@ -11,33 +11,45 @@ echo "  GPU Monitor — Docker 설치"
 echo "========================================"
 echo ""
 
+# ── Docker 명령어 자동 감지 ──────────────────────────────────────────────
+# sudo 필요 여부 감지
+if docker info &>/dev/null 2>&1; then
+    DOCKER_BIN="docker"
+elif sudo -n docker info &>/dev/null 2>&1; then
+    DOCKER_BIN="sudo docker"
+else
+    echo "[!] Docker에 접근할 수 없습니다."
+    echo "    sudo로 실행하거나 docker 그룹에 추가 후 다시 시도하세요:"
+    echo "      sudo bash $(basename "$0")"
+    echo "      sudo usermod -aG docker \$USER && newgrp docker"
+    exit 1
+fi
+
+# docker compose v2 vs docker-compose v1
+if $DOCKER_BIN compose version &>/dev/null 2>&1; then
+    COMPOSE="$DOCKER_BIN compose"
+elif command -v docker-compose &>/dev/null; then
+    COMPOSE="docker-compose"
+    [[ "$DOCKER_BIN" == "sudo docker" ]] && COMPOSE="sudo docker-compose"
+else
+    echo "[!] docker compose v2 또는 docker-compose가 없습니다."
+    echo "    설치: https://docs.docker.com/compose/install/"
+    exit 1
+fi
+
 # ── 1. 사전 조건 검증 ────────────────────────────────────────────────────
 echo "[1/5] 사전 조건 확인 중..."
 FAIL=0
 
-# Docker
-if command -v docker &>/dev/null; then
-    echo "  [✓] Docker $(docker --version | awk '{print $3}' | tr -d ',')"
-else
-    echo "  [✗] Docker가 설치되어 있지 않습니다."
-    echo "       설치: https://docs.docker.com/engine/install/"
-    FAIL=1
-fi
-
-# docker compose v2
-if docker compose version &>/dev/null 2>&1; then
-    echo "  [✓] $(docker compose version)"
-else
-    echo "  [✗] 'docker compose' v2가 없습니다. Docker 20.10+ 필요."
-    FAIL=1
-fi
+echo "  [✓] Docker $($DOCKER_BIN --version | awk '{print $3}' | tr -d ',')"
+echo "  [✓] $($COMPOSE version)"
 
 # NVIDIA container runtime (toolkit 설치 + Docker에 연결됐는지)
 HAS_RUNTIME=0
-command -v nvidia-container-runtime &>/dev/null         && HAS_RUNTIME=1
-docker info 2>/dev/null | grep -qi "nvidia"             && HAS_RUNTIME=1
+command -v nvidia-container-runtime &>/dev/null              && HAS_RUNTIME=1
+$DOCKER_BIN info 2>/dev/null | grep -qi "nvidia"             && HAS_RUNTIME=1
 [ -f /etc/docker/daemon.json ] && \
-    grep -qi "nvidia" /etc/docker/daemon.json           && HAS_RUNTIME=1
+    grep -qi "nvidia" /etc/docker/daemon.json                && HAS_RUNTIME=1
 
 if [ "$HAS_RUNTIME" -eq 1 ]; then
     echo "  [✓] NVIDIA container runtime 감지됨"
@@ -122,13 +134,13 @@ echo ""
 
 # ── 3. 이미지 빌드 ──────────────────────────────────────────────────────
 echo "[3/5] Docker 이미지 빌드 중..."
-docker compose build
+$COMPOSE build
 echo ""
 
 # ── 4. GPU 접근 테스트 (빌드된 이미지로) ────────────────────────────────
 echo "[4/5] Docker 컨테이너에서 GPU 접근 테스트 중..."
-IMAGE_NAME=$(docker compose images -q gpu-monitor 2>/dev/null | head -1)
-if docker run --rm --gpus all \
+IMAGE_NAME=$($DOCKER_BIN images --format "{{.Repository}}" | grep "gpu-monitor$" | head -1)
+if $DOCKER_BIN run --rm --gpus all \
        -v /usr/bin/nvidia-smi:/usr/bin/nvidia-smi:ro \
        "$IMAGE_NAME" nvidia-smi -L 2>/dev/null; then
     echo "  [✓] GPU 접근 확인됨"
@@ -141,16 +153,16 @@ echo ""
 
 # ── 5. 컨테이너 시작 ─────────────────────────────────────────────────────
 echo "[5/5] 컨테이너 시작 중..."
-docker compose up -d
+$COMPOSE up -d
 
 echo ""
 echo "========================================"
 echo "  설치 완료!"
 echo "========================================"
 echo ""
-echo "  상태 확인  : docker compose ps"
-echo "  실시간 로그: docker compose logs -f"
-echo "  설정 수정  : nano gpu_monitor.conf"
+echo "상태 확인  : docker compose ps"
+echo "실시간 로그: docker compose logs -f"
+echo "설정 수정  : nano gpu_monitor.conf"
 echo "             (수정 후 → docker compose restart)"
-echo "  중지       : docker compose down"
+echo "중지       : docker compose down"
 echo ""
