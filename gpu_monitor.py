@@ -226,19 +226,16 @@ def build_embed() -> dict:
         max_util  = max(max_util, util)
 
         gpu_procs = proc_map.get(uuid, [])
+
+        mem_width = len(str(mem_total))
+        parts = [f"Util: `{util:3d}%` | Mem: `{mem_used:{mem_width}d}` / `{mem_total}` MiB"]
         if gpu_procs:
             lines = []
             for p in gpu_procs:
                 user = get_username(p["pid"])
                 lines.append(f"• `{user}` (PID {p['pid']}) — {p['mem_used']} MiB")
-            proc_text = "\n".join(lines)
-        else:
-            proc_text = "—"
-
-        mem_width = len(str(mem_total))
-        parts = [f"Util: `{util:3d}%` | Mem: `{mem_used:{mem_width}d}` / `{mem_total}` MiB"]
-        parts.append("**Processes**")
-        parts.append(proc_text)
+            parts.append("**Processes**")
+            parts.append("\n".join(lines))
         value = "\n".join(parts)
         if multi_gpu:
             value += "\n\u200b"  # GPU 간 한 줄 여백
