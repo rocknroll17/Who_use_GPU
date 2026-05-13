@@ -1,0 +1,18 @@
+[Unit]
+Description=GPU Discord Monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__WORKDIR__
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 -u __WORKDIR__/gpu_monitor.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

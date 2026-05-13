@@ -1,0 +1,16 @@
+services:
+  gpu-monitor:
+    build: .
+    restart: always
+    pid: "host"                        # /proc/{pid} → 호스트 프로세스 조회 가능
+    volumes:
+      - /usr/bin/nvidia-smi:/usr/bin/nvidia-smi:ro  # 호스트 nvidia-smi 직접 마운트
+      - ./gpu_monitor.conf:/app/gpu_monitor.conf     # 설정 + msg_id 통합 (쓰기 가능)
+      - /etc/passwd:/etc/passwd:ro                   # PID → username 변환
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
